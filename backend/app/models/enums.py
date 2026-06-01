@@ -1,0 +1,92 @@
+import enum
+
+
+class UserRole(str, enum.Enum):
+    USER = "USER"
+    GENEALOGIST = "GENEALOGIST"
+    ADMIN = "ADMIN"
+
+
+class UserStatus(str, enum.Enum):
+    ACTIVE = "ACTIVE"
+    BLOCKED = "BLOCKED"
+    PENDING_VERIFICATION = "PENDING_VERIFICATION"
+
+
+class ProfileStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
+
+
+class PersonSex(str, enum.Enum):
+    MALE = "MALE"
+    FEMALE = "FEMALE"
+    UNKNOWN = "UNKNOWN"
+
+
+class RelationshipType(str, enum.Enum):
+    PARENT_CHILD = "PARENT_CHILD"
+    SPOUSE = "SPOUSE"
+
+
+class FactType(str, enum.Enum):
+    BIRTH = "BIRTH"
+    DEATH = "DEATH"
+    MARRIAGE = "MARRIAGE"
+    RESIDENCE = "RESIDENCE"
+    SERVICE = "SERVICE"
+    NOTE = "NOTE"
+
+
+class FactConfidence(str, enum.Enum):
+    UNVERIFIED = "UNVERIFIED"
+    HYPOTHESIS = "HYPOTHESIS"
+    PROBABLE = "PROBABLE"
+    CONFIRMED = "CONFIRMED"
+
+
+class ArchiveRequestStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    PREPARED = "PREPARED"
+    SENT = "SENT"
+    IN_PROGRESS = "IN_PROGRESS"
+    RESPONSE_RECEIVED = "RESPONSE_RECEIVED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class DocumentKind(str, enum.Enum):
+    ARCHIVE_SCAN = "ARCHIVE_SCAN"
+    REQUEST_DRAFT = "REQUEST_DRAFT"
+    REQUEST_FINAL = "REQUEST_FINAL"
+    BOOK_RESULT = "BOOK_RESULT"
+    ATTACHMENT = "ATTACHMENT"
+
+
+class DocumentSourceType(str, enum.Enum):
+    USER_UPLOAD = "USER_UPLOAD"
+    GENEALOGIST_UPLOAD = "GENEALOGIST_UPLOAD"
+    SYSTEM_GENERATED = "SYSTEM_GENERATED"
+    ARCHIVE_RECEIVED = "ARCHIVE_RECEIVED"
+
+
+class NotificationType(str, enum.Enum):
+    REQUEST_STATUS_CHANGED = "REQUEST_STATUS_CHANGED"
+    REQUEST_NEEDS_CLARIFICATION = "REQUEST_NEEDS_CLARIFICATION"
+    DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
+    BOOK_READY = "BOOK_READY"
+    SYSTEM = "SYSTEM"
+
+
+class AuditActorType(str, enum.Enum):
+    USER = "USER"
+    SYSTEM = "SYSTEM"
+
+
+class BookStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"

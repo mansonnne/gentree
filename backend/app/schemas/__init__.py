@@ -1,5 +1,4 @@
 from app.schemas.health import HealthcheckResponse
-from app.schemas.user import RoleSchema, UserRead
+from app.schemas.user import UserRead
 
-__all__ = ["HealthcheckResponse", "RoleSchema", "UserRead"]
-
+__all__ = ["HealthcheckResponse", "UserRead"]

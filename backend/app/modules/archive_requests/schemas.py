@@ -1,0 +1,67 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.models.enums import ArchiveRequestStatus
+
+
+class ArchiveRequestCreate(BaseModel):
+    title: str
+    request_goal: str | None = None
+    requested_archive_name: str | None = None
+
+    @field_validator("title")
+    @classmethod
+    def title_not_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("Title cannot be empty")
+        return v.strip()
+
+
+class ArchiveRequestUpdate(BaseModel):
+    title: str | None = None
+    request_goal: str | None = None
+    requested_archive_name: str | None = None
+    outgoing_number: str | None = None
+
+
+class StatusChangeRequest(BaseModel):
+    new_status: ArchiveRequestStatus
+    comment: str | None = None
+
+
+class AssigneeRequest(BaseModel):
+    genealogist_user_id: UUID
+
+
+class ArchiveRequestRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    profile_id: UUID
+    created_by_user_id: UUID
+    assigned_genealogist_user_id: UUID | None
+    template_id: UUID | None
+    title: str
+    request_goal: str | None
+    current_status: ArchiveRequestStatus
+    requested_archive_name: str | None
+    outgoing_number: str | None
+    sent_at: datetime | None
+    due_at: datetime | None
+    completed_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class StatusHistoryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    archive_request_id: UUID
+    from_status: ArchiveRequestStatus | None
+    to_status: ArchiveRequestStatus
+    changed_by_user_id: UUID | None
+    comment: str | None
+    created_at: datetime

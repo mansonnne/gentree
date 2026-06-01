@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=[".env", "../.env"],  # works from both backend/ and project root
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     postgres_user: str = "gentree"
     postgres_password: str = "gentree"
     database_echo: bool = False
+
+    secret_key: str = "change-me-in-production-use-a-long-random-string"
+    access_token_expire_minutes: int = 60 * 24 * 7  # 7 days
+
+    upload_dir: str = "./uploads"
 
     @computed_field  # type: ignore[prop-decorator]
     @property

@@ -3,11 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.user import Role
-
-
-class RoleSchema(BaseModel):
-    name: Role
+from app.models.enums import UserRole, UserStatus
 
 
 class UserRead(BaseModel):
@@ -15,7 +11,10 @@ class UserRead(BaseModel):
 
     id: UUID
     email: str
-    role: Role
+    role: UserRole
+    status: UserStatus
+    first_name: str | None
+    last_name: str | None
+    middle_name: str | None
     created_at: datetime
     updated_at: datetime
-

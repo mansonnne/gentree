@@ -1,0 +1,126 @@
+from uuid import UUID
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models.enums import UserRole
+from app.models.profile import Person, Relationship
+from app.models.user import User
+from app.modules.relationships.schemas import (
+    RelationshipCreate,
+    RelationshipUpdate,
+    TreeNode,
+    TreeResponse,
+)
+from app.modules.persons.schemas import PersonNameRead
+from app.repositories.profile import ProfileRepository
+from app.repositories.relationship import RelationshipRepository
+
+
+class RelationshipService:
+    def __init__(self, db: AsyncSession) -> None:
+        self.repo = RelationshipRepository(db)
+        self.profile_repo = ProfileRepository(db)
+        self.db = db
+
+    async def _assert_profile_access(self, profile_id: UUID, user: User) -> None:
+        profile = await self.profile_repo.get_by_id(profile_id)
+        if not profile:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+        if user.role != UserRole.ADMIN and profile.owner_user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+
+    async def _get_person_in_profile(self, person_id: UUID, profile_id: UUID) -> Person:
+        result = await self.db.execute(
+            select(Person).where(Person.id == person_id, Person.profile_id == profile_id)
+        )
+        person = result.scalar_one_or_none()
+        if not person:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Person {person_id} not found in this profile",
+            )
+        return person
+
+    async def create(
+        self, profile_id: UUID, data: RelationshipCreate, user: User
+    ) -> Relationship:
+        await self._assert_profile_access(profile_id, user)
+        await self._get_person_in_profile(data.source_person_id, profile_id)
+        await self._get_person_in_profile(data.target_person_id, profile_id)
+
+        if await self.repo.exists(
+            profile_id,
+            data.source_person_id,
+            data.target_person_id,
+            data.relationship_type,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This relationship already exists",
+            )
+
+        return await self.repo.create(
+            profile_id=profile_id,
+            **data.model_dump(),
+        )
+
+    async def list_by_profile(self, profile_id: UUID, user: User) -> list[Relationship]:
+        await self._assert_profile_access(profile_id, user)
+        return await self.repo.get_by_profile(profile_id)
+
+    async def update(
+        self, relationship_id: UUID, data: RelationshipUpdate, user: User
+    ) -> Relationship:
+        rel = await self._get_rel_with_access(relationship_id, user)
+        updates = data.model_dump(exclude_none=True)
+        if not updates:
+            return rel
+        return await self.repo.update(rel, **updates)
+
+    async def delete(self, relationship_id: UUID, user: User) -> None:
+        rel = await self._get_rel_with_access(relationship_id, user)
+        await self.repo.delete(rel)
+
+    async def _get_rel_with_access(self, relationship_id: UUID, user: User) -> Relationship:
+        rel = await self.repo.get_by_id(relationship_id)
+        if not rel:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Relationship not found"
+            )
+        await self._assert_profile_access(rel.profile_id, user)
+        return rel
+
+    async def get_tree(self, profile_id: UUID, user: User) -> TreeResponse:
+        await self._assert_profile_access(profile_id, user)
+
+        persons_result = await self.db.execute(
+            select(Person)
+            .options(selectinload(Person.names))
+            .where(Person.profile_id == profile_id)
+        )
+        persons = list(persons_result.scalars().all())
+
+        relationships = await self.repo.get_by_profile(profile_id)
+
+        nodes = []
+        for p in persons:
+            primary = next((n for n in p.names if n.is_primary), p.names[0] if p.names else None)
+            nodes.append(
+                TreeNode(
+                    id=p.id,
+                    sex=p.sex,
+                    is_living=p.is_living,
+                    birth_date=p.birth_date,
+                    death_date=p.death_date,
+                    primary_name=PersonNameRead.model_validate(primary) if primary else None,
+                )
+            )
+
+        return TreeResponse(
+            profile_id=profile_id,
+            nodes=nodes,
+            edges=relationships,
+        )
