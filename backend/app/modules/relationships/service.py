@@ -1,12 +1,11 @@
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.models.enums import UserRole
-from app.models.profile import Person, Relationship
+from app.models.enums import RelationshipType, UserRole
+from app.models.profile import Person, ProfilePerson, Relationship
 from app.models.user import User
 from app.modules.relationships.schemas import (
     RelationshipCreate,
@@ -14,7 +13,6 @@ from app.modules.relationships.schemas import (
     TreeNode,
     TreeResponse,
 )
-from app.modules.persons.schemas import PersonNameRead
 from app.repositories.profile import ProfileRepository
 from app.repositories.relationship import RelationshipRepository
 
@@ -34,7 +32,9 @@ class RelationshipService:
 
     async def _get_person_in_profile(self, person_id: UUID, profile_id: UUID) -> Person:
         result = await self.db.execute(
-            select(Person).where(Person.id == person_id, Person.profile_id == profile_id)
+            select(Person)
+            .join(ProfilePerson, ProfilePerson.person_id == Person.id)
+            .where(Person.id == person_id, ProfilePerson.profile_id == profile_id)
         )
         person = result.scalar_one_or_none()
         if not person:
@@ -44,12 +44,24 @@ class RelationshipService:
             )
         return person
 
-    async def create(
-        self, profile_id: UUID, data: RelationshipCreate, user: User
-    ) -> Relationship:
+    async def create(self, profile_id: UUID, data: RelationshipCreate, user: User) -> Relationship:
         await self._assert_profile_access(profile_id, user)
         await self._get_person_in_profile(data.source_person_id, profile_id)
         await self._get_person_in_profile(data.target_person_id, profile_id)
+
+        if data.relationship_type == RelationshipType.PARENT_CHILD:
+            count_result = await self.db.execute(
+                select(func.count(Relationship.id)).where(
+                    Relationship.profile_id == profile_id,
+                    Relationship.target_person_id == data.target_person_id,
+                    Relationship.relationship_type == RelationshipType.PARENT_CHILD,
+                )
+            )
+            if count_result.scalar_one() >= 2:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="A person cannot have more than 2 parents (ontology axiom A4)",
+                )
 
         if await self.repo.exists(
             profile_id,
@@ -62,18 +74,13 @@ class RelationshipService:
                 detail="This relationship already exists",
             )
 
-        return await self.repo.create(
-            profile_id=profile_id,
-            **data.model_dump(),
-        )
+        return await self.repo.create(profile_id=profile_id, **data.model_dump())
 
     async def list_by_profile(self, profile_id: UUID, user: User) -> list[Relationship]:
         await self._assert_profile_access(profile_id, user)
         return await self.repo.get_by_profile(profile_id)
 
-    async def update(
-        self, relationship_id: UUID, data: RelationshipUpdate, user: User
-    ) -> Relationship:
+    async def update(self, relationship_id: UUID, data: RelationshipUpdate, user: User) -> Relationship:
         rel = await self._get_rel_with_access(relationship_id, user)
         updates = data.model_dump(exclude_none=True)
         if not updates:
@@ -98,29 +105,25 @@ class RelationshipService:
 
         persons_result = await self.db.execute(
             select(Person)
-            .options(selectinload(Person.names))
-            .where(Person.profile_id == profile_id)
+            .join(ProfilePerson, ProfilePerson.person_id == Person.id)
+            .where(ProfilePerson.profile_id == profile_id)
         )
         persons = list(persons_result.scalars().all())
 
         relationships = await self.repo.get_by_profile(profile_id)
 
-        nodes = []
-        for p in persons:
-            primary = next((n for n in p.names if n.is_primary), p.names[0] if p.names else None)
-            nodes.append(
-                TreeNode(
-                    id=p.id,
-                    sex=p.sex,
-                    is_living=p.is_living,
-                    birth_date=p.birth_date,
-                    death_date=p.death_date,
-                    primary_name=PersonNameRead.model_validate(primary) if primary else None,
-                )
+        nodes = [
+            TreeNode(
+                id=p.id,
+                last_name=p.last_name,
+                first_name=p.first_name,
+                middle_name=p.middle_name,
+                sex=p.sex,
+                is_living=p.is_living,
+                birth_date=p.birth_date,
+                death_date=p.death_date,
             )
+            for p in persons
+        ]
 
-        return TreeResponse(
-            profile_id=profile_id,
-            nodes=nodes,
-            edges=relationships,
-        )
+        return TreeResponse(profile_id=profile_id, nodes=nodes, edges=relationships)

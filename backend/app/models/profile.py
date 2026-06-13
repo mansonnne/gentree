@@ -14,7 +14,7 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
 from app.models.enums import PersonSex, ProfileStatus, RelationshipType
@@ -49,9 +49,9 @@ class Person(Base):
     __tablename__ = "persons"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    profile_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    middle_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     sex: Mapped[PersonSex] = mapped_column(
         Enum(PersonSex, name="person_sex", native_enum=False),
         default=PersonSex.UNKNOWN,
@@ -70,32 +70,21 @@ class Person(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
-    names: Mapped[list["PersonName"]] = relationship(
-        "PersonName", cascade="all, delete-orphan", lazy="raise"
-    )
 
-
-class PersonName(Base):
-    __tablename__ = "person_names"
+class ProfilePerson(Base):
+    """Join table: many-to-many between profiles and persons (per ВКР §3.5)."""
+    __tablename__ = "profile_persons"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     person_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("persons.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    family_name: Mapped[str] = mapped_column(String(150), nullable=False)
-    given_name: Mapped[str] = mapped_column(String(150), nullable=False)
-    patronymic: Mapped[str | None] = mapped_column(String(150), nullable=True)
-    name_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
 
     __table_args__ = (
-        CheckConstraint(
-            "name_type IN ('PRIMARY', 'BIRTH', 'ALTERNATIVE')",
-            name="ck_person_names_name_type",
-        ),
+        UniqueConstraint("profile_id", "person_id", name="uq_profile_persons"),
     )
 
 
@@ -119,6 +108,7 @@ class Relationship(Base):
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    layout_as: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

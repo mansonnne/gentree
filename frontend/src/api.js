@@ -21,9 +21,10 @@ async function req(method, path, body) {
 
 export const api = {
   // auth
-  register: (d) => req('POST', '/auth/register', d),
-  login: (d)    => req('POST', '/auth/login', d),
-  me: ()        => req('GET', '/auth/me'),
+  register: (d)  => req('POST', '/auth/register', d),
+  login: (d)     => req('POST', '/auth/login', d),
+  me: ()         => req('GET', '/auth/me'),
+  updateMe: (d)  => req('PATCH', '/auth/me', d),
 
   // profiles
   createProfile: (d)    => req('POST', '/profiles', d),
@@ -63,7 +64,13 @@ export const api = {
   unreadCount: ()        => req('GET', '/notifications/unread-count'),
   markRead: (id)         => req('PATCH', `/notifications/${id}/read`),
 
+  // books
+  createBook: (pid)  => req('POST', `/profiles/${pid}/book`),
+  listBooks: (pid)   => req('GET', `/profiles/${pid}/books`),
+
   // documents
+  deleteDoc: (id)          => req('DELETE', `/documents/${id}`),
+  listDocsByPerson: (pid)  => req('GET', `/documents/by-person/${pid}`),
   uploadDoc: (formData) => {
     const headers = {}
     if (token()) headers['Authorization'] = `Bearer ${token()}`

@@ -5,6 +5,7 @@ from app.core.security import create_access_token, hash_password, verify_passwor
 from app.models.enums import UserRole, UserStatus
 from app.models.user import User
 from app.modules.auth.schemas import LoginRequest, RegisterRequest
+from app.schemas.user import UserUpdate
 from app.repositories.user import UserRepository
 
 
@@ -41,3 +42,9 @@ class AuthService:
                 detail="Account is blocked",
             )
         return create_access_token(user.id, user.role)
+
+    async def update_me(self, user: User, data: UserUpdate) -> User:
+        updates = data.model_dump(exclude_none=True)
+        if not updates:
+            return user
+        return await self.repo.update(user, **updates)

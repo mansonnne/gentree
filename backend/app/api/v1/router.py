@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.modules.archive_requests.router import router as archive_requests_router
 from app.modules.auth.router import router as auth_router
+from app.modules.books.router import router as books_router
 from app.modules.documents.router import router as documents_router
 from app.modules.facts.router import router as facts_router
 from app.modules.notifications.router import router as notifications_router
@@ -28,4 +29,5 @@ router.include_router(facts_router)
 router.include_router(archive_requests_router)
 router.include_router(documents_router)
 router.include_router(notifications_router)
+router.include_router(books_router)
 

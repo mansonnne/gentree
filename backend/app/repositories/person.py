@@ -2,9 +2,8 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.models.profile import Person, PersonName
+from app.models.profile import Person, ProfilePerson
 from app.repositories.base import SQLAlchemyRepository
 
 
@@ -14,50 +13,45 @@ class PersonRepository(SQLAlchemyRepository[Person]):
 
     async def get_by_id(self, person_id: UUID) -> Person | None:
         result = await self.session.execute(
-            select(Person)
-            .options(selectinload(Person.names))
-            .where(Person.id == person_id)
+            select(Person).where(Person.id == person_id)
         )
         return result.scalar_one_or_none()
 
     async def get_by_profile(self, profile_id: UUID) -> list[Person]:
         result = await self.session.execute(
             select(Person)
-            .options(selectinload(Person.names))
-            .where(Person.profile_id == profile_id)
+            .join(ProfilePerson, ProfilePerson.person_id == Person.id)
+            .where(ProfilePerson.profile_id == profile_id)
             .order_by(Person.created_at)
         )
         return list(result.scalars().all())
 
-    async def create(self, profile_id: UUID, primary_name: dict, **kwargs: object) -> Person:
-        person = Person(profile_id=profile_id, **kwargs)
-        self.session.add(person)
-        await self.session.flush()  # get person.id before adding name
-
-        name = PersonName(
-            person_id=person.id,
-            name_type="PRIMARY",
-            is_primary=True,
-            **primary_name,
+    async def is_in_profile(self, person_id: UUID, profile_id: UUID) -> bool:
+        result = await self.session.execute(
+            select(ProfilePerson).where(
+                ProfilePerson.person_id == person_id,
+                ProfilePerson.profile_id == profile_id,
+            )
         )
-        self.session.add(name)
+        return result.scalar_one_or_none() is not None
+
+    async def create(self, profile_id: UUID, **kwargs: object) -> Person:
+        person = Person(**kwargs)
+        self.session.add(person)
+        await self.session.flush()
+
+        link = ProfilePerson(profile_id=profile_id, person_id=person.id)
+        self.session.add(link)
         await self.session.commit()
         await self.session.refresh(person)
-
-        result = await self.session.execute(
-            select(Person).options(selectinload(Person.names)).where(Person.id == person.id)
-        )
-        return result.scalar_one()
+        return person
 
     async def update(self, person: Person, **kwargs: object) -> Person:
         for key, value in kwargs.items():
             setattr(person, key, value)
         await self.session.commit()
-
-        result = await self.session.execute(
-            select(Person).options(selectinload(Person.names)).where(Person.id == person.id)
-        )
-        return result.scalar_one()
+        await self.session.refresh(person)
+        return person
 
     async def delete(self, person: Person) -> None:
         await self.session.delete(person)

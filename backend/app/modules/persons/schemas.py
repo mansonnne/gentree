@@ -6,24 +6,10 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.models.enums import PersonSex
 
 
-class PersonNameCreate(BaseModel):
-    family_name: str
-    given_name: str
-    patronymic: str | None = None
-
-
-class PersonNameRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    family_name: str
-    given_name: str
-    patronymic: str | None
-    name_type: str
-    is_primary: bool
-
-
 class PersonCreate(BaseModel):
+    last_name: str
+    first_name: str
+    middle_name: str | None = None
     sex: PersonSex = PersonSex.UNKNOWN
     birth_date: date | None = None
     death_date: date | None = None
@@ -31,7 +17,6 @@ class PersonCreate(BaseModel):
     death_place: str | None = None
     notes: str | None = None
     is_living: bool = True
-    primary_name: PersonNameCreate
 
     @field_validator("death_date")
     @classmethod
@@ -43,6 +28,9 @@ class PersonCreate(BaseModel):
 
 
 class PersonUpdate(BaseModel):
+    last_name: str | None = None
+    first_name: str | None = None
+    middle_name: str | None = None
     sex: PersonSex | None = None
     birth_date: date | None = None
     death_date: date | None = None
@@ -56,7 +44,9 @@ class PersonRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
-    profile_id: UUID
+    last_name: str
+    first_name: str
+    middle_name: str | None
     sex: PersonSex
     birth_date: date | None
     death_date: date | None
@@ -64,6 +54,5 @@ class PersonRead(BaseModel):
     death_place: str | None
     notes: str | None
     is_living: bool
-    names: list[PersonNameRead]
     created_at: datetime
     updated_at: datetime

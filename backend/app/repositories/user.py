@@ -25,3 +25,10 @@ class UserRepository(SQLAlchemyRepository[User]):
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def update(self, user: User, **kwargs: object) -> User:
+        for key, value in kwargs.items():
+            setattr(user, key, value)
+        await self.session.commit()
+        await self.session.refresh(user)
+        return user

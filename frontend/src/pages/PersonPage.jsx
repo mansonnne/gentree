@@ -9,28 +9,82 @@ const CONF_OPT = ['UNVERIFIED','HYPOTHESIS','PROBABLE','CONFIRMED']
 const SEX_LABEL = { MALE: 'Мужской', FEMALE: 'Женский', UNKNOWN: 'Неизвестно' }
 
 const EMPTY_FACT = { fact_type: 'NOTE', fact_date: '', place: '', value_text: '', confidence: 'UNVERIFIED' }
+const SEX_OPTS = ['MALE', 'FEMALE', 'UNKNOWN']
+const SEX_LABELS_EDIT = { MALE: 'Мужской', FEMALE: 'Женский', UNKNOWN: 'Неизвестно' }
 
 export default function PersonPage() {
   const { profileId, personId } = useParams()
   const nav = useNavigate()
   const [person, setPerson] = useState(null)
   const [facts, setFacts] = useState([])
+  const [docs, setDocs] = useState([])
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FACT)
+  const [editingFactId, setEditingFactId] = useState(null)
+  const [editFactForm, setEditFactForm] = useState({})
   const [error, setError] = useState('')
+
+  const [editing, setEditing] = useState(false)
+  const [editForm, setEditForm] = useState({})
+  const [editError, setEditError] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     api.getPerson(personId).then(setPerson)
     api.listFacts(personId).then(setFacts)
+    api.listDocsByPerson(personId).then(setDocs).catch(() => {})
   }, [personId])
 
-  const primaryName = (p) => {
-    const n = p.names?.find(n => n.is_primary) ?? p.names?.[0]
-    if (!n) return '—'
-    return [n.given_name, n.patronymic, n.family_name].filter(Boolean).join(' ')
+  const startEdit = () => {
+    setEditForm({
+      last_name:   person.last_name   ?? '',
+      first_name:  person.first_name  ?? '',
+      middle_name: person.middle_name ?? '',
+      sex:         person.sex         ?? 'UNKNOWN',
+      birth_date:  person.birth_date  ?? '',
+      death_date:  person.death_date  ?? '',
+      birth_place: person.birth_place ?? '',
+      death_place: person.death_place ?? '',
+      notes:       person.notes       ?? '',
+      is_living:   person.is_living   ?? true,
+    })
+    setEditError('')
+    setEditing(true)
   }
 
-  const addFact = async (e) => {
+  const saveEdit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setEditError('')
+    try {
+      const payload = {
+        last_name:   editForm.last_name   || null,
+        first_name:  editForm.first_name  || null,
+        middle_name: editForm.middle_name || null,
+        sex:         editForm.sex,
+        birth_date:  editForm.birth_date  || null,
+        death_date:  editForm.death_date  || null,
+        birth_place: editForm.birth_place || null,
+        death_place: editForm.death_place || null,
+        notes:       editForm.notes       || null,
+        is_living:   editForm.is_living,
+      }
+      const updated = await api.updatePerson(personId, payload)
+      setPerson(updated)
+      setEditing(false)
+    } catch (err) {
+      setEditError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const ef = (k) => (e) => setEditForm(f => ({ ...f, [k]: e.target.value }))
+
+  const fullName = (p) =>
+    [p.last_name, p.first_name, p.middle_name].filter(Boolean).join(' ') || '—'
+
+const addFact = async (e) => {
     e.preventDefault()
     setError('')
     try {
@@ -53,6 +107,34 @@ export default function PersonPage() {
     setFacts(prev => prev.filter(f => f.id !== id))
   }
 
+  const startEditFact = (fact) => {
+    setEditingFactId(fact.id)
+    setEditFactForm({
+      fact_type: fact.fact_type,
+      fact_date: fact.fact_date ?? '',
+      place: fact.place ?? '',
+      value_text: fact.value_text ?? '',
+      confidence: fact.confidence,
+    })
+  }
+
+  const saveEditFact = async (e) => {
+    e.preventDefault()
+    try {
+      const updated = await api.updateFact(editingFactId, {
+        fact_type: editFactForm.fact_type,
+        fact_date: editFactForm.fact_date || null,
+        place: editFactForm.place || null,
+        value_text: editFactForm.value_text || null,
+        confidence: editFactForm.confidence,
+      })
+      setFacts(prev => prev.map(f => f.id === editingFactId ? updated : f))
+      setEditingFactId(null)
+    } catch (err) { setError(err.message) }
+  }
+
+  const eff = (k) => (e) => setEditFactForm(f => ({ ...f, [k]: e.target.value }))
+
   const ff = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
   if (!person) return <div className="page muted">Загрузка...</div>
@@ -68,13 +150,80 @@ export default function PersonPage() {
         }}>Удалить персону</button>
       </div>
 
-      <h1 style={{ marginBottom: 4 }}>{primaryName(person)}</h1>
-      <p className="muted" style={{ marginBottom: 16 }}>
-        {SEX_LABEL[person.sex]}
-        {person.birth_date && ` · р. ${person.birth_date}`}
-        {person.death_date && ` · ум. ${person.death_date}`}
-        {person.birth_place && ` · ${person.birth_place}`}
-      </p>
+      <div className="row" style={{ alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
+        <div style={{ flex: 1 }}>
+          <h1 style={{ marginBottom: 4 }}>{fullName(person)}</h1>
+          <p className="muted">
+            {SEX_LABEL[person.sex]}
+            {person.birth_date && ` · р. ${person.birth_date}`}
+            {person.death_date && ` · ум. ${person.death_date}`}
+            {person.birth_place && ` · ${person.birth_place}`}
+          </p>
+          {person.notes && <p style={{ marginTop: 6, fontSize: 13, color: '#374151' }}>{person.notes}</p>}
+        </div>
+        <button className="outline sm" onClick={startEdit}>Редактировать</button>
+      </div>
+
+      {editing && (
+        <form onSubmit={saveEdit} className="card col" style={{ marginBottom: 20 }}>
+          <h3 style={{ marginBottom: 12 }}>Редактирование персоны</h3>
+          <div className="row">
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Фамилия</label>
+              <input value={editForm.last_name} onChange={ef('last_name')} />
+            </div>
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Имя</label>
+              <input value={editForm.first_name} onChange={ef('first_name')} />
+            </div>
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Отчество</label>
+              <input value={editForm.middle_name} onChange={ef('middle_name')} />
+            </div>
+          </div>
+          <div className="row">
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Пол</label>
+              <select value={editForm.sex} onChange={ef('sex')}>
+                {SEX_OPTS.map(s => <option key={s} value={s}>{SEX_LABELS_EDIT[s]}</option>)}
+              </select>
+            </div>
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Дата рождения</label>
+              <input type="date" value={editForm.birth_date} onChange={ef('birth_date')} />
+            </div>
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Дата смерти</label>
+              <input type="date" value={editForm.death_date} onChange={ef('death_date')} />
+            </div>
+          </div>
+          <div className="row">
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Место рождения</label>
+              <input value={editForm.birth_place} onChange={ef('birth_place')} />
+            </div>
+            <div className="col" style={{ flex: 1 }}>
+              <label className="label">Место смерти</label>
+              <input value={editForm.death_place} onChange={ef('death_place')} />
+            </div>
+          </div>
+          <div className="row" style={{ alignItems: 'center', gap: 8 }}>
+            <input type="checkbox" id="is_living"
+              checked={editForm.is_living}
+              onChange={e => setEditForm(f => ({ ...f, is_living: e.target.checked }))} />
+            <label htmlFor="is_living" style={{ fontSize: 13 }}>Ещё жив</label>
+          </div>
+          <div className="col">
+            <label className="label">Примечания</label>
+            <textarea value={editForm.notes} onChange={ef('notes')} rows={2} />
+          </div>
+          {editError && <p className="error">{editError}</p>}
+          <div className="row">
+            <button type="submit" disabled={saving}>{saving ? 'Сохранение…' : 'Сохранить'}</button>
+            <button type="button" className="outline" onClick={() => setEditing(false)}>Отмена</button>
+          </div>
+        </form>
+      )}
 
       <hr />
 
@@ -130,20 +279,74 @@ export default function PersonPage() {
             <tr><th>Тип</th><th>Дата</th><th>Место</th><th>Описание</th><th>Достоверность</th><th></th></tr>
           </thead>
           <tbody>
-            {facts.map(f => (
+            {facts.map(f => editingFactId === f.id ? (
+              <tr key={f.id}>
+                <td>
+                  <select value={editFactForm.fact_type} onChange={eff('fact_type')} style={{ fontSize: 12 }}>
+                    {FACT_TYPES.map(t => <option key={t} value={t}>{FACT_LABELS[t]}</option>)}
+                  </select>
+                </td>
+                <td><input type="date" value={editFactForm.fact_date} onChange={eff('fact_date')} style={{ fontSize: 12, width: 130 }} /></td>
+                <td><input value={editFactForm.place} onChange={eff('place')} style={{ fontSize: 12 }} /></td>
+                <td><input value={editFactForm.value_text} onChange={eff('value_text')} style={{ fontSize: 12 }} /></td>
+                <td>
+                  <select value={editFactForm.confidence} onChange={eff('confidence')} style={{ fontSize: 12 }}>
+                    {CONF_OPT.map(c => <option key={c} value={c}>{CONF_LABELS[c]}</option>)}
+                  </select>
+                </td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button className="sm" onClick={saveEditFact} style={{ marginRight: 4 }}>✓</button>
+                  <button className="outline sm" onClick={() => setEditingFactId(null)}>✕</button>
+                </td>
+              </tr>
+            ) : (
               <tr key={f.id}>
                 <td><strong>{FACT_LABELS[f.fact_type]}</strong></td>
                 <td>{f.fact_date ?? '—'}</td>
                 <td>{f.place ?? '—'}</td>
                 <td>{f.value_text ?? '—'}</td>
                 <td><span className="badge">{CONF_LABELS[f.confidence]}</span></td>
-                <td>
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  <button className="outline sm" onClick={() => startEditFact(f)} style={{ marginRight: 4 }}>✎</button>
                   <button className="danger sm" onClick={() => deleteFact(f.id)}>×</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+      {docs.length > 0 && (
+        <>
+          <hr />
+          <h2 style={{ margin: '16px 0 10px' }}>Документы</h2>
+          <table>
+            <thead>
+              <tr><th>Файл</th><th>Тип</th><th>Размер</th><th></th></tr>
+            </thead>
+            <tbody>
+              {docs.map(d => (
+                <tr key={d.id}>
+                  <td>{d.file_name}</td>
+                  <td className="muted">{d.mime_type}</td>
+                  <td className="muted">{(d.file_size_bytes / 1024).toFixed(1)} KB</td>
+                  <td>
+                    <button className="outline sm" onClick={() => {
+                      const token = localStorage.getItem('token')
+                      fetch(`/api/v1/documents/${d.id}/download`, {
+                        headers: { Authorization: `Bearer ${token}` }
+                      }).then(r => r.blob()).then(blob => {
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url; a.download = d.file_name; a.click()
+                        URL.revokeObjectURL(url)
+                      })
+                    }}>Скачать</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
     </div>
   )

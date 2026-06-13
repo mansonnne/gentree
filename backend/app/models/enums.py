@@ -29,6 +29,7 @@ class PersonSex(str, enum.Enum):
 class RelationshipType(str, enum.Enum):
     PARENT_CHILD = "PARENT_CHILD"
     SPOUSE = "SPOUSE"
+    OTHER = "OTHER"
 
 
 class FactType(str, enum.Enum):
@@ -77,11 +78,6 @@ class NotificationType(str, enum.Enum):
     REQUEST_NEEDS_CLARIFICATION = "REQUEST_NEEDS_CLARIFICATION"
     DOCUMENT_UPLOADED = "DOCUMENT_UPLOADED"
     BOOK_READY = "BOOK_READY"
-    SYSTEM = "SYSTEM"
-
-
-class AuditActorType(str, enum.Enum):
-    USER = "USER"
     SYSTEM = "SYSTEM"
 
 

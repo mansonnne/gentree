@@ -3,19 +3,18 @@ from app.models.archive_request import (
     ArchiveRequestStatusHistory,
     ArchiveRequestTemplate,
 )
-from app.models.audit import AuditLog
 from app.models.book import GeneratedBook
 from app.models.document import ArchiveRequestDocument, Document, FactDocument, PersonDocument
 from app.models.fact import Fact
 from app.models.notification import Notification, NotificationTemplate
-from app.models.profile import Person, PersonName, Profile, Relationship
+from app.models.profile import Person, Profile, ProfilePerson, Relationship
 from app.models.user import User
 
 __all__ = [
     "User",
     "Profile",
     "Person",
-    "PersonName",
+    "ProfilePerson",
     "Relationship",
     "Fact",
     "ArchiveRequestTemplate",
@@ -28,5 +27,4 @@ __all__ = [
     "NotificationTemplate",
     "Notification",
     "GeneratedBook",
-    "AuditLog",
 ]

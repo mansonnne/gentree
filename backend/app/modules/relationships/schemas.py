@@ -4,7 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.models.enums import PersonSex, RelationshipType
-from app.modules.persons.schemas import PersonNameRead
 
 
 class RelationshipCreate(BaseModel):
@@ -14,6 +13,7 @@ class RelationshipCreate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     notes: str | None = None
+    layout_as: str | None = None
 
     @model_validator(mode="after")
     def persons_differ(self) -> "RelationshipCreate":
@@ -39,6 +39,7 @@ class RelationshipRead(BaseModel):
     start_date: date | None
     end_date: date | None
     notes: str | None
+    layout_as: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -46,14 +47,14 @@ class RelationshipRead(BaseModel):
 # --- Tree DTOs ---
 
 class TreeNode(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: UUID
+    last_name: str
+    first_name: str
+    middle_name: str | None
     sex: PersonSex
     is_living: bool
     birth_date: date | None
     death_date: date | None
-    primary_name: PersonNameRead | None
 
 
 class TreeEdge(BaseModel):
@@ -63,6 +64,8 @@ class TreeEdge(BaseModel):
     source_person_id: UUID
     target_person_id: UUID
     relationship_type: RelationshipType
+    notes: str | None
+    layout_as: str | None
 
 
 class TreeResponse(BaseModel):

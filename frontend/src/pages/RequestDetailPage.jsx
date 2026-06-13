@@ -27,6 +27,8 @@ export default function RequestDetailPage() {
   const [comment, setComment] = useState('')
   const [nextStatus, setNextStatus] = useState('')
   const [error, setError] = useState('')
+  const [editingReq, setEditingReq] = useState(false)
+  const [editReqForm, setEditReqForm] = useState({})
   const fileRef = useRef()
 
   const load = () => {
@@ -49,6 +51,39 @@ export default function RequestDetailPage() {
       setReq(updated)
       setComment('')
       api.getHistory(requestId).then(setHistory)
+    } catch (err) { setError(err.message) }
+  }
+
+  const startEditReq = () => {
+    setEditReqForm({
+      title: req.title,
+      request_goal: req.request_goal ?? '',
+      requested_archive_name: req.requested_archive_name ?? '',
+    })
+    setEditingReq(true)
+  }
+
+  const saveEditReq = async (e) => {
+    e.preventDefault()
+    setError('')
+    try {
+      const updated = await api.updateRequest(requestId, {
+        title: editReqForm.title || null,
+        request_goal: editReqForm.request_goal || null,
+        requested_archive_name: editReqForm.requested_archive_name || null,
+      })
+      setReq(updated)
+      setEditingReq(false)
+    } catch (err) { setError(err.message) }
+  }
+
+  const erf = (k) => (e) => setEditReqForm(f => ({ ...f, [k]: e.target.value }))
+
+  const deleteDoc = async (id) => {
+    if (!confirm('Удалить документ?')) return
+    try {
+      await api.deleteDoc(id)
+      setDocs(prev => prev.filter(d => d.id !== id))
     } catch (err) { setError(err.message) }
   }
 
@@ -79,15 +114,43 @@ export default function RequestDetailPage() {
 
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
         <h1 style={{ fontSize: 18 }}>{req.title}</h1>
-        <span className={`badge ${req.current_status.toLowerCase()}`}>
-          {STATUS_LABEL[req.current_status]}
-        </span>
+        <div className="row" style={{ gap: 8 }}>
+          <span className={`badge ${req.current_status.toLowerCase()}`}>
+            {STATUS_LABEL[req.current_status]}
+          </span>
+          {!editingReq && (
+            <button className="outline sm" onClick={startEditReq}>Редактировать</button>
+          )}
+        </div>
       </div>
       {req.requested_archive_name && (
         <p className="muted" style={{ marginBottom: 8 }}>Архив: {req.requested_archive_name}</p>
       )}
       {req.request_goal && (
         <p style={{ marginBottom: 16 }}>{req.request_goal}</p>
+      )}
+
+      {editingReq && (
+        <form onSubmit={saveEditReq} className="card col" style={{ marginBottom: 16 }}>
+          <h3 style={{ marginBottom: 10 }}>Редактирование запроса</h3>
+          <div className="col">
+            <label className="label">Название</label>
+            <input value={editReqForm.title} onChange={erf('title')} required />
+          </div>
+          <div className="col">
+            <label className="label">Цель запроса</label>
+            <textarea value={editReqForm.request_goal} onChange={erf('request_goal')} rows={2} />
+          </div>
+          <div className="col">
+            <label className="label">Название архива</label>
+            <input value={editReqForm.requested_archive_name} onChange={erf('requested_archive_name')} />
+          </div>
+          {error && <p className="error">{error}</p>}
+          <div className="row">
+            <button type="submit">Сохранить</button>
+            <button type="button" className="outline" onClick={() => setEditingReq(false)}>Отмена</button>
+          </div>
+        </form>
       )}
 
       <hr />
@@ -157,11 +220,10 @@ export default function RequestDetailPage() {
                 <td>{d.file_name}</td>
                 <td className="muted">{d.mime_type}</td>
                 <td className="muted">{(d.file_size_bytes / 1024).toFixed(1)} KB</td>
-                <td>
+                <td style={{ whiteSpace: 'nowrap' }}>
                   <a
-                    href={`/api/v1/documents/${d.id}/download`}
-                    target="_blank"
-                    rel="noreferrer"
+                    href="#"
+                    style={{ marginRight: 12 }}
                     onClick={e => {
                       e.preventDefault()
                       const token = localStorage.getItem('token')
@@ -175,6 +237,7 @@ export default function RequestDetailPage() {
                       })
                     }}
                   >Скачать</a>
+                  <button className="danger sm" onClick={() => deleteDoc(d.id)}>×</button>
                 </td>
               </tr>
             ))}
