@@ -69,14 +69,22 @@ function AppHeader() {
   return (
     <header style={{
       height: 48, background: '#fff', borderBottom: '1px solid #e5e7eb',
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
       padding: '0 24px', position: 'sticky', top: 0, zIndex: 100,
     }}>
       <span
         onClick={() => nav('/')}
-        style={{ fontWeight: 700, fontSize: 18, cursor: 'pointer', color: '#6366f1' }}
+        style={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontWeight: 700,
+          fontSize: 18,
+          cursor: 'pointer',
+          color: '#6366f1',
+        }}
       >
-        Gentree
+        dinastia
       </span>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

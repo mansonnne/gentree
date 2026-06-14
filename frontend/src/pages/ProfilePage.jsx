@@ -4,6 +4,11 @@ import { api } from '../api'
 
 const BOOK_STATUS_LABEL = { PENDING: 'Ожидает', IN_PROGRESS: 'Формируется', SUCCEEDED: 'Готова', FAILED: 'Ошибка' }
 const BOOK_STATUS_COLOR = { PENDING: '#f59e0b', IN_PROGRESS: '#6366f1', SUCCEEDED: '#16a34a', FAILED: '#ef4444' }
+const BOOK_TONE_LABEL = {
+  WARM: 'Тёплая семейная летопись',
+  DOCUMENTARY: 'Документальное изложение',
+  CONCISE: 'Краткий справочник',
+}
 
 const SEX_LABEL = { MALE: 'М', FEMALE: 'Ж', UNKNOWN: '?' }
 const SEX_OPT = ['MALE', 'FEMALE', 'UNKNOWN']
@@ -13,6 +18,10 @@ const STATUS_LABEL = {
   COMPLETED: 'Завершён', CANCELLED: 'Отменён',
 }
 const REL_LABEL = { PARENT_CHILD: 'Родитель → Ребёнок', SPOUSE: 'Супруги', OTHER: 'Иная связь' }
+const relationshipLabel = (relationship) =>
+  relationship.relationship_type === 'OTHER' && relationship.layout_as === 'SIBLING'
+    ? 'Братья / сёстры'
+    : REL_LABEL[relationship.relationship_type] ?? relationship.relationship_type
 
 const EMPTY_PERSON = { last_name: '', first_name: '', middle_name: '', sex: 'UNKNOWN',
   birth_date: '', death_date: '', birth_place: '', death_place: '', notes: '', is_living: true }
@@ -28,6 +37,10 @@ export default function ProfilePage() {
   const [relationships, setRelationships] = useState([])
   const [books, setBooks] = useState([])
   const [bookLoading, setBookLoading] = useState(false)
+  const [bookOptions, setBookOptions] = useState({
+    tone: 'WARM',
+    include_unverified: true,
+  })
   const [tab, setTab] = useState('persons')
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileForm, setProfileForm] = useState({})
@@ -46,6 +59,18 @@ export default function ProfilePage() {
     api.listRelationships(id).then(setRelationships)
     api.listBooks(id).then(setBooks)
   }, [id])
+
+  const hasActiveBooks = books.some(book =>
+    book.status === 'PENDING' || book.status === 'IN_PROGRESS'
+  )
+
+  useEffect(() => {
+    if (!hasActiveBooks) return undefined
+    const timer = setInterval(() => {
+      api.listBooks(id).then(setBooks).catch(() => {})
+    }, 2000)
+    return () => clearInterval(timer)
+  }, [hasActiveBooks, id])
 
   const fullName = (p) =>
     [p.last_name, p.first_name, p.middle_name].filter(Boolean).join(' ') || '—'
@@ -134,11 +159,38 @@ export default function ProfilePage() {
 
   const generateBook = async () => {
     setBookLoading(true)
+    setError('')
     try {
-      const b = await api.createBook(id)
+      const b = await api.createBook(id, bookOptions)
       setBooks(prev => [b, ...prev])
     } catch (err) { setError(err.message) }
     finally { setBookLoading(false) }
+  }
+
+  const getBookFile = async (book, preview = false) => {
+    const previewWindow = preview ? window.open('', '_blank') : null
+    try {
+      const token = localStorage.getItem('token')
+      const response = await fetch(`/api/v1/documents/${book.document_id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) throw new Error('Не удалось загрузить книгу.')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+
+      if (previewWindow) {
+        previewWindow.location.href = url
+      } else {
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${profile.title}_книга.html`
+        link.click()
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch (err) {
+      previewWindow?.close()
+      setError(err.message)
+    }
   }
 
   if (!profile) return <div className="page muted">Загрузка...</div>
@@ -382,10 +434,12 @@ export default function ProfilePage() {
                       <option value="">Только пунктир (позиция не меняется)</option>
                       <option value="PARENT_CHILD">Как родитель → ребёнок (источник старше цели)</option>
                       <option value="SPOUSE">Как супруги (один уровень)</option>
+                      <option value="SIBLING">Братья / сёстры (один уровень, родители неизвестны)</option>
                     </select>
                     <p className="muted" style={{ fontSize: 12 }}>
                       {relForm.layout_as === 'PARENT_CHILD' && 'Отчим, мачеха, приёмный родитель — цель встанет на уровень ниже источника.'}
                       {relForm.layout_as === 'SPOUSE' && 'Персоны выровняются на одном уровне.'}
+                      {relForm.layout_as === 'SIBLING' && 'Персоны встанут рядом на одном поколении и соединятся пунктирной скобой без вымышленного родителя.'}
                       {!relForm.layout_as && 'Связь отобразится пунктиром между текущими позициями персон.'}
                     </p>
                   </div>
@@ -411,7 +465,7 @@ export default function ProfilePage() {
                   const tgt = personById(r.target_person_id)
                   return (
                     <tr key={r.id}>
-                      <td><span className="badge">{REL_LABEL[r.relationship_type] ?? r.relationship_type}</span></td>
+                      <td><span className="badge">{relationshipLabel(r)}</span></td>
                       <td>{src ? fullName(src) : r.source_person_id}</td>
                       <td>{tgt ? fullName(tgt) : r.target_person_id}</td>
                       <td>
@@ -486,13 +540,70 @@ export default function ProfilePage() {
         <>
           <div className="row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
             <h2>Генеалогическая книга</h2>
-            <button onClick={generateBook} disabled={bookLoading}>
-              {bookLoading ? 'Создаётся...' : '+ Сформировать книгу'}
+            <button onClick={generateBook} disabled={bookLoading || hasActiveBooks}>
+              {bookLoading
+                ? 'Запускается...'
+                : hasActiveBooks
+                  ? 'Книга формируется...'
+                  : '+ Сформировать книгу'}
             </button>
           </div>
           <p className="muted" style={{ marginBottom: 16, fontSize: 13 }}>
-            Система сформирует итоговый документ на основе данных профиля, персон и фактов.
+            Нейросеть подготовит легко читаемую семейную летопись на основе персон,
+            родственных связей и сохранённых фактов. Она не должна добавлять сведения,
+            которых нет в исследовании.
           </p>
+          <div className="card row" style={{
+            marginBottom: 20,
+            alignItems: 'flex-end',
+            gap: 20,
+            flexWrap: 'wrap',
+          }}>
+            <div className="col" style={{ minWidth: 260 }}>
+              <label className="label">Стиль повествования</label>
+              <select
+                value={bookOptions.tone}
+                onChange={event => setBookOptions(options => ({
+                  ...options,
+                  tone: event.target.value,
+                }))}
+              >
+                {Object.entries(BOOK_TONE_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              paddingBottom: 8,
+            }}>
+              <input
+                type="checkbox"
+                checked={bookOptions.include_unverified}
+                onChange={event => setBookOptions(options => ({
+                  ...options,
+                  include_unverified: event.target.checked,
+                }))}
+                style={{ width: 'auto' }}
+              />
+              Включать гипотезы и непроверенные факты
+            </label>
+          </div>
+          {hasActiveBooks && (
+            <p style={{
+              marginBottom: 14,
+              padding: '10px 12px',
+              borderRadius: 6,
+              background: '#eef2ff',
+              color: '#4338ca',
+              fontSize: 13,
+            }}>
+              Книга формируется в фоне. Статус обновляется автоматически.
+            </p>
+          )}
           {books.length === 0 ? (
             <p className="muted">Книги ещё не формировались.</p>
           ) : (
@@ -508,21 +619,23 @@ export default function ProfilePage() {
                       <span style={{ color: BOOK_STATUS_COLOR[b.status], fontWeight: 600 }}>
                         {BOOK_STATUS_LABEL[b.status] ?? b.status}
                       </span>
+                      {b.status === 'FAILED' && b.error_message && (
+                        <div className="error" style={{ marginTop: 4, maxWidth: 420, fontSize: 11 }}>
+                          {b.error_message}
+                        </div>
+                      )}
                     </td>
                     <td>{b.finished_at ? new Date(b.finished_at).toLocaleString('ru') : '—'}</td>
                     <td>
                       {b.status === 'SUCCEEDED' && b.document_id && (
-                        <button className="outline sm" onClick={() => {
-                          const token = localStorage.getItem('token')
-                          fetch(`/api/v1/documents/${b.document_id}/download`, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          }).then(r => r.blob()).then(blob => {
-                            const url = URL.createObjectURL(blob)
-                            const a = document.createElement('a')
-                            a.href = url; a.download = `${profile.title}_книга.html`; a.click()
-                            URL.revokeObjectURL(url)
-                          })
-                        }}>Скачать</button>
+                        <div className="row" style={{ gap: 6 }}>
+                          <button className="outline sm" onClick={() => getBookFile(b, true)}>
+                            Открыть
+                          </button>
+                          <button className="outline sm" onClick={() => getBookFile(b)}>
+                            Скачать
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>

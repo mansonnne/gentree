@@ -59,7 +59,10 @@ class PersonService:
 
     async def update(self, person_id: UUID, data: PersonUpdate, user: User) -> Person:
         person = await self._get_person_with_access(person_id, user)
-        updates = data.model_dump(exclude_none=True)
+        updates = data.model_dump(exclude_unset=True)
+        for required_field in ("last_name", "first_name", "sex", "is_living"):
+            if updates.get(required_field) is None:
+                updates.pop(required_field, None)
         if not updates:
             return person
         return await self.person_repo.update(person, **updates)

@@ -33,7 +33,7 @@ export default function AuthPage() {
 
   return (
     <div style={{ maxWidth: 360, margin: '100px auto', padding: '0 16px' }}>
-      <h1 style={{ marginBottom: 8 }}>Gentree</h1>
+      <h1 style={{ marginBottom: 8 }}>dinastia</h1>
       <p className="muted" style={{ marginBottom: 24 }}>Система генеалогических исследований</p>
 
       <div className="row" style={{ marginBottom: 16 }}>

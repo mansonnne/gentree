@@ -65,7 +65,7 @@ export const api = {
   markRead: (id)         => req('PATCH', `/notifications/${id}/read`),
 
   // books
-  createBook: (pid)  => req('POST', `/profiles/${pid}/book`),
+  createBook: (pid,d) => req('POST', `/profiles/${pid}/book`, d),
   listBooks: (pid)   => req('GET', `/profiles/${pid}/books`),
 
   // documents

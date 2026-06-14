@@ -55,6 +55,7 @@ class TreeNode(BaseModel):
     is_living: bool
     birth_date: date | None
     death_date: date | None
+    created_at: datetime
 
 
 class TreeEdge(BaseModel):
@@ -64,8 +65,11 @@ class TreeEdge(BaseModel):
     source_person_id: UUID
     target_person_id: UUID
     relationship_type: RelationshipType
+    start_date: date | None
+    end_date: date | None
     notes: str | None
     layout_as: str | None
+    created_at: datetime
 
 
 class TreeResponse(BaseModel):

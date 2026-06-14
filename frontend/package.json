@@ -3,9 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "imports": {
+    "#dagre": "./src/dagreAdapter.cjs"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test src/treeLayout.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
