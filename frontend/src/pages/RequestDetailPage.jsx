@@ -29,6 +29,7 @@ export default function RequestDetailPage() {
   const [error, setError] = useState('')
   const [editingReq, setEditingReq] = useState(false)
   const [editReqForm, setEditReqForm] = useState({})
+  const [fileName, setFileName] = useState('')
   const fileRef = useRef()
 
   const load = () => {
@@ -99,6 +100,7 @@ export default function RequestDetailPage() {
       const doc = await api.uploadDoc(fd)
       setDocs(prev => [doc, ...prev])
       fileRef.current.value = ''
+      setFileName('')
     } catch (err) { setError(err.message) }
   }
 
@@ -113,7 +115,7 @@ export default function RequestDetailPage() {
       </div>
 
       <div className="row" style={{ justifyContent: 'space-between', marginBottom: 4 }}>
-        <h1 style={{ fontSize: 18 }}>{req.title}</h1>
+        <h2>{req.title}</h2>
         <div className="row" style={{ gap: 8 }}>
           <span className={`badge ${req.current_status.toLowerCase()}`}>
             {STATUS_LABEL[req.current_status]}
@@ -203,8 +205,20 @@ export default function RequestDetailPage() {
       {/* Documents */}
       <h2 style={{ margin: '16px 0 10px' }}>Документы</h2>
       <form onSubmit={uploadDoc} className="row" style={{ marginBottom: 12 }}>
-        <input type="file" ref={fileRef} style={{ flex: 1 }} required />
-        <button type="submit">Загрузить</button>
+        <input
+          type="file"
+          ref={fileRef}
+          style={{ display: 'none' }}
+          onChange={e => setFileName(e.target.files?.[0]?.name || '')}
+          required
+        />
+        <button type="button" className="outline" onClick={() => fileRef.current?.click()}>
+          Выбрать файл
+        </button>
+        <span style={{ flex: 1, color: fileName ? '#1a1208' : '#7a6e62', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {fileName || 'Файл не выбран'}
+        </span>
+        <button type="submit" disabled={!fileName}>Загрузить</button>
       </form>
 
       {docs.length === 0 ? (

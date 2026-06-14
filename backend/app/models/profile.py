@@ -63,6 +63,7 @@ class Person(Base):
     death_place: Mapped[str | None] = mapped_column(String(255), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_living: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

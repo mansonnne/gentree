@@ -68,7 +68,7 @@ function AppHeader() {
 
   return (
     <header style={{
-      height: 48, background: '#fff', borderBottom: '1px solid #e5e7eb',
+      height: 48, background: '#0a1f44', borderBottom: '1px solid #162e5e',
       display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
       padding: '0 24px', position: 'sticky', top: 0, zIndex: 100,
     }}>
@@ -81,7 +81,7 @@ function AppHeader() {
           fontWeight: 700,
           fontSize: 18,
           cursor: 'pointer',
-          color: '#6366f1',
+          color: '#f5f0e1',
         }}
       >
         dinastia
@@ -91,9 +91,9 @@ function AppHeader() {
         {/* Bell */}
         <div style={{ position: 'relative' }} ref={panelRef}>
           <button
-            className="outline sm"
+            className="outline sm on-dark"
             onClick={openPanel}
-            style={{ position: 'relative', padding: '4px 10px' }}
+            style={{ position: 'relative' }}
             title="Уведомления"
           >
             🔔
@@ -129,7 +129,7 @@ function AppHeader() {
                     onClick={() => !n.read_at && markRead(n.id)}
                     style={{
                       padding: '10px 16px', borderBottom: '1px solid #f3f4f6',
-                      background: n.read_at ? '#fff' : '#eff6ff',
+                      background: n.read_at ? '#fff' : '#f0e8d8',
                       cursor: n.read_at ? 'default' : 'pointer',
                     }}
                   >
@@ -147,10 +147,10 @@ function AppHeader() {
           )}
         </div>
 
-        <button className="outline sm" onClick={() => nav('/settings')}>
+        <button className="outline sm on-dark" onClick={() => nav('/settings')}>
           {userName || 'Настройки'}
         </button>
-        <button className="outline sm" onClick={logout}>Выйти</button>
+        <button className="outline sm on-dark" onClick={logout}>Выйти</button>
       </div>
     </header>
   )

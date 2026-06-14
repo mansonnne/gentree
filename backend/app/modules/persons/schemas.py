@@ -54,5 +54,6 @@ class PersonRead(BaseModel):
     death_place: str | None
     notes: str | None
     is_living: bool
+    photo_url: str | None
     created_at: datetime
     updated_at: datetime

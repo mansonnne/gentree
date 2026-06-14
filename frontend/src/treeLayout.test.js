@@ -348,6 +348,64 @@ test('places an other-parent relation on adjacent generations', () => {
   assert.equal(route.label, 'Отчим')
 })
 
+test('step-child with two-marriage parent ends up near the step-parent, not far right', () => {
+  // Viktor has two marriages. Natalia is the first wife (two bio kids).
+  // Jolie is the second wife (one bio kid: Chick). Popa is Viktor's step-child.
+  // Voronin family is a separate branch (children of Viktor's sister Olga).
+  // The step-child Popa must land near Viktor, not to the right of the Voronin kids.
+  const nodes = [
+    person('grandpa', 'MALE', 1940),
+    person('grandma', 'FEMALE', 1945),
+    person('viktor', 'MALE', 1969),
+    person('olga', 'FEMALE', 1972),
+    person('natalia', 'FEMALE', 1973),
+    person('jolie', 'FEMALE', 1980),
+    person('voronin', 'MALE', 1970),
+    person('danatas', 'MALE', 2005),
+    person('gleb', 'MALE', 2005),
+    person('chick', 'FEMALE', 2003),
+    person('roman', 'MALE', 2000),
+    person('anton', 'MALE', 2002),
+    person('popa', 'UNKNOWN', 2005),
+  ]
+  const edges = [
+    spouse('grandparents', 'grandpa', 'grandma'),
+    parent('gp-viktor', 'grandpa', 'viktor'),
+    parent('gm-viktor', 'grandma', 'viktor'),
+    parent('gp-olga', 'grandpa', 'olga'),
+    parent('gm-olga', 'grandma', 'olga'),
+    spouse('viktor-natalia', 'viktor', 'natalia', { start_date: '1995-01-01' }),
+    parent('v-danatas', 'viktor', 'danatas'),
+    parent('n-danatas', 'natalia', 'danatas'),
+    parent('v-gleb', 'viktor', 'gleb'),
+    parent('n-gleb', 'natalia', 'gleb'),
+    spouse('viktor-jolie', 'viktor', 'jolie', { start_date: '2001-01-01' }),
+    parent('v-chick', 'viktor', 'chick'),
+    parent('j-chick', 'jolie', 'chick'),
+    other('viktor-popa', 'viktor', 'popa', 'PARENT_CHILD', 'Отчим'),
+    spouse('olga-voronin', 'olga', 'voronin'),
+    parent('o-roman', 'olga', 'roman'),
+    parent('v-roman', 'voronin', 'roman'),
+    parent('o-anton', 'olga', 'anton'),
+    parent('v-anton', 'voronin', 'anton'),
+  ]
+
+  const result = assertCoreInvariants(nodes, edges)
+  const viktorX = nodeCenterX(result, 'viktor')
+  const popaX = nodeCenterX(result, 'popa')
+  const romanX = nodeCenterX(result, 'roman')
+  const antonX = nodeCenterX(result, 'anton')
+  const voroninRightEdge = Math.max(romanX, antonX) + DEFAULT_LAYOUT_OPTIONS.personWidth / 2
+  assert.ok(
+    popaX < voroninRightEdge,
+    `step-child Popa (x=${popaX}) should be left of Voronin children right edge (${voroninRightEdge})`,
+  )
+  assert.ok(
+    Math.abs(popaX - viktorX) < Math.abs(romanX - viktorX) + DEFAULT_LAYOUT_OPTIONS.personWidth,
+    `step-child Popa (x=${popaX}) should be closer to Viktor (x=${viktorX}) than Voronin kids are`,
+  )
+})
+
 test('keeps parents of an already married person near the same component', () => {
   const nodes = [
     person('grandmother'),

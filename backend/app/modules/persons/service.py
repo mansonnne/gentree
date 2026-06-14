@@ -1,9 +1,12 @@
+import secrets
+from pathlib import Path
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.models.enums import UserRole
 from app.models.profile import Person, Profile, ProfilePerson
 from app.models.user import User
@@ -70,3 +73,27 @@ class PersonService:
     async def delete(self, person_id: UUID, user: User) -> None:
         person = await self._get_person_with_access(person_id, user)
         await self.person_repo.delete(person)
+
+    async def delete_photo(self, person_id: UUID, user: User) -> Person:
+        person = await self._get_person_with_access(person_id, user)
+        if person.photo_url:
+            upload_dir = Path(settings.upload_dir) / "persons"
+            for f in upload_dir.glob(f"{person_id}_*"):
+                f.unlink(missing_ok=True)
+        return await self.person_repo.update(person, photo_url=None)
+
+    async def upload_photo(self, person_id: UUID, file: UploadFile, user: User) -> Person:
+        person = await self._get_person_with_access(person_id, user)
+        ext = (file.filename or "photo").rsplit(".", 1)[-1].lower()
+        if ext not in {"jpg", "jpeg", "png", "webp", "gif"}:
+            ext = "jpg"
+        upload_dir = Path(settings.upload_dir) / "persons"
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        token = secrets.token_hex(8)
+        dest = upload_dir / f"{person_id}_{token}.{ext}"
+        for old in upload_dir.glob(f"{person_id}_*"):
+            old.unlink(missing_ok=True)
+        content = await file.read()
+        dest.write_bytes(content)
+        photo_url = f"/uploads/persons/{person_id}_{token}.{ext}"
+        return await self.person_repo.update(person, photo_url=photo_url)

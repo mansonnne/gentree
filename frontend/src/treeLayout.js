@@ -1052,7 +1052,7 @@ function routeUnions(model, personPositions, familyPositions, rectangles, option
       },
       style: union.former
         ? { stroke: '#6b7280', strokeWidth: 1.75, strokeDasharray: '6 4' }
-        : { stroke: '#f43f5e', strokeWidth: 2 },
+        : { stroke: '#b85450', strokeWidth: 2 },
       zIndex: union.former ? 10 : 1,
     })
   })
@@ -1345,6 +1345,7 @@ export function buildTreeLayout(tree, userOptions = {}) {
       name: fullName(person),
       years: formatPersonYears(person),
       sex: person.sex,
+      photo_url: person.photo_url || null,
     },
   }))
   model.unions.forEach(union => {

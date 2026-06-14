@@ -178,6 +178,7 @@ class RelationshipService:
                 is_living=p.is_living,
                 birth_date=p.birth_date,
                 death_date=p.death_date,
+                photo_url=p.photo_url,
                 created_at=p.created_at,
             )
             for p in persons

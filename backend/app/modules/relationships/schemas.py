@@ -55,6 +55,7 @@ class TreeNode(BaseModel):
     is_living: bool
     birth_date: date | None
     death_date: date | None
+    photo_url: str | None
     created_at: datetime
 
 

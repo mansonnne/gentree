@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 
 const BOOK_STATUS_LABEL = { PENDING: 'Ожидает', IN_PROGRESS: 'Формируется', SUCCEEDED: 'Готова', FAILED: 'Ошибка' }
-const BOOK_STATUS_COLOR = { PENDING: '#f59e0b', IN_PROGRESS: '#6366f1', SUCCEEDED: '#16a34a', FAILED: '#ef4444' }
+const BOOK_STATUS_COLOR = { PENDING: '#c2860a', IN_PROGRESS: '#7c5c3b', SUCCEEDED: '#16a34a', FAILED: '#9b3030' }
 const BOOK_TONE_LABEL = {
   WARM: 'Тёплая семейная летопись',
   DOCUMENTARY: 'Документальное изложение',
@@ -11,6 +11,7 @@ const BOOK_TONE_LABEL = {
 }
 
 const SEX_LABEL = { MALE: 'М', FEMALE: 'Ж', UNKNOWN: '?' }
+const SEX_LABEL_FULL = { MALE: 'Мужской', FEMALE: 'Женский', UNKNOWN: 'Неизвестно' }
 const SEX_OPT = ['MALE', 'FEMALE', 'UNKNOWN']
 const STATUS_LABEL = {
   DRAFT: 'Черновик', PREPARED: 'Подготовлен', SENT: 'Отправлен',
@@ -31,6 +32,28 @@ const EMPTY_REL = { source_person_id: '', target_person_id: '', relationship_typ
 export default function ProfilePage() {
   const { id } = useParams()
   const nav = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const tab = searchParams.get('tab') ?? 'persons'
+  const personSearch = searchParams.get('pq') ?? ''
+  const relSearch = searchParams.get('rq') ?? ''
+
+  const setTab = (t) => setSearchParams(prev => {
+    const p = new URLSearchParams(prev)
+    p.set('tab', t)
+    return p
+  })
+  const setPersonSearch = (v) => setSearchParams(prev => {
+    const p = new URLSearchParams(prev)
+    if (v) p.set('pq', v); else p.delete('pq')
+    return p
+  })
+  const setRelSearch = (v) => setSearchParams(prev => {
+    const p = new URLSearchParams(prev)
+    if (v) p.set('rq', v); else p.delete('rq')
+    return p
+  })
+
   const [profile, setProfile] = useState(null)
   const [persons, setPersons] = useState([])
   const [requests, setRequests] = useState([])
@@ -41,7 +64,6 @@ export default function ProfilePage() {
     tone: 'WARM',
     include_unverified: true,
   })
-  const [tab, setTab] = useState('persons')
   const [editingProfile, setEditingProfile] = useState(false)
   const [profileForm, setProfileForm] = useState({})
   const [showPersonForm, setShowPersonForm] = useState(false)
@@ -241,7 +263,7 @@ export default function ProfilePage() {
           <button
             key={t}
             className="outline"
-            style={{ borderBottom: tab === t ? '2px solid #6366f1' : '2px solid transparent', borderRadius: '4px 4px 0 0' }}
+            style={{ borderBottom: tab === t ? '2px solid #7c5c3b' : '2px solid transparent', borderRadius: '7px 7px 0 0', height: 36 }}
             onClick={() => setTab(t)}
           >
             {t === 'persons' && `Персоны (${persons.length})`}
@@ -264,6 +286,20 @@ export default function ProfilePage() {
             </button>
           </div>
 
+          {persons.length > 0 && (
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8.5" cy="8.5" r="5.5" /><line x1="13" y1="13" x2="18" y2="18" />
+              </svg>
+              <input
+                placeholder="Поиск по имени, месту рождения..."
+                value={personSearch}
+                onChange={e => setPersonSearch(e.target.value)}
+                style={{ width: '100%', paddingLeft: 34, boxSizing: 'border-box' }}
+              />
+            </div>
+          )}
+
           {showPersonForm && (
             <form onSubmit={addPerson} className="card col" style={{ marginBottom: 16 }}>
               <h3>Новая персона</h3>
@@ -285,7 +321,7 @@ export default function ProfilePage() {
                 <div className="col" style={{ flex: 1 }}>
                   <label className="label">Пол</label>
                   <select value={personForm.sex} onChange={pf('sex')}>
-                    {SEX_OPT.map(s => <option key={s} value={s}>{SEX_LABEL[s]} {s}</option>)}
+                    {SEX_OPT.map(s => <option key={s} value={s}>{SEX_LABEL_FULL[s]}</option>)}
                   </select>
                 </div>
                 <div className="col" style={{ flex: 1 }}>
@@ -326,26 +362,36 @@ export default function ProfilePage() {
             </form>
           )}
 
-          {persons.length === 0 ? (
-            <p className="muted">Нет персон.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr><th>ФИО</th><th>Пол</th><th>Дата рождения</th><th>Место рождения</th></tr>
-              </thead>
-              <tbody>
-                {persons.map(p => (
-                  <tr key={p.id} style={{ cursor: 'pointer' }}
-                    onClick={() => nav(`/profiles/${id}/persons/${p.id}`)}>
-                    <td><strong>{fullName(p)}</strong></td>
-                    <td>{SEX_LABEL[p.sex]}</td>
-                    <td>{p.birth_date ?? '—'}</td>
-                    <td>{p.birth_place ?? '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          {(() => {
+            const q = personSearch.trim().toLowerCase()
+            const filtered = q
+              ? persons.filter(p =>
+                  fullName(p).toLowerCase().includes(q) ||
+                  (p.birth_place ?? '').toLowerCase().includes(q) ||
+                  (p.birth_date ?? '').includes(q)
+                )
+              : persons
+            if (persons.length === 0) return <p className="muted">Нет персон.</p>
+            if (filtered.length === 0) return <p className="muted">Ничего не найдено.</p>
+            return (
+              <table>
+                <thead>
+                  <tr><th>ФИО</th><th>Пол</th><th>Дата рождения</th><th>Место рождения</th></tr>
+                </thead>
+                <tbody>
+                  {filtered.map(p => (
+                    <tr key={p.id} style={{ cursor: 'pointer' }}
+                      onClick={() => nav(`/profiles/${id}/persons/${p.id}`)}>
+                      <td><strong>{fullName(p)}</strong></td>
+                      <td>{SEX_LABEL[p.sex]}</td>
+                      <td>{p.birth_date ?? '—'}</td>
+                      <td>{p.birth_place ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )
+          })()}
         </>
       )}
 
@@ -452,31 +498,74 @@ export default function ProfilePage() {
             </form>
           )}
 
-          {relationships.length === 0 ? (
-            <p className="muted">Нет связей.</p>
-          ) : (
-            <table>
-              <thead>
-                <tr><th>Тип</th><th>Источник</th><th>Цель</th><th></th></tr>
-              </thead>
-              <tbody>
-                {relationships.map(r => {
+          {relationships.length > 0 && (
+            <div style={{ position: 'relative', marginBottom: 12 }}>
+              <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', pointerEvents: 'none' }} width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="8.5" cy="8.5" r="5.5" /><line x1="13" y1="13" x2="18" y2="18" />
+              </svg>
+              <input
+                placeholder="Поиск по имени или типу связи..."
+                value={relSearch}
+                onChange={e => setRelSearch(e.target.value)}
+                style={{ width: '100%', paddingLeft: 34, boxSizing: 'border-box' }}
+              />
+            </div>
+          )}
+
+          {(() => {
+            const q = relSearch.trim().toLowerCase()
+            const filtered = q
+              ? relationships.filter(r => {
                   const src = personById(r.source_person_id)
                   const tgt = personById(r.target_person_id)
                   return (
-                    <tr key={r.id}>
-                      <td><span className="badge">{relationshipLabel(r)}</span></td>
-                      <td>{src ? fullName(src) : r.source_person_id}</td>
-                      <td>{tgt ? fullName(tgt) : r.target_person_id}</td>
-                      <td>
-                        <button className="danger sm" onClick={() => deleteRelationship(r.id)}>×</button>
-                      </td>
-                    </tr>
+                    (src && fullName(src).toLowerCase().includes(q)) ||
+                    (tgt && fullName(tgt).toLowerCase().includes(q)) ||
+                    relationshipLabel(r).toLowerCase().includes(q) ||
+                    (r.notes ?? '').toLowerCase().includes(q)
                   )
-                })}
-              </tbody>
-            </table>
-          )}
+                })
+              : relationships
+            if (relationships.length === 0) return <p className="muted">Нет связей.</p>
+            if (filtered.length === 0) return <p className="muted">Ничего не найдено.</p>
+            return (
+              <table>
+                <thead>
+                  <tr><th>Тип</th><th>Источник</th><th>Цель</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {filtered.map(r => {
+                    const src = personById(r.source_person_id)
+                    const tgt = personById(r.target_person_id)
+                    return (
+                      <tr key={r.id}>
+                        <td><span className="badge">{relationshipLabel(r)}</span></td>
+                        <td>{src ? fullName(src) : r.source_person_id}</td>
+                        <td>{tgt ? fullName(tgt) : r.target_person_id}</td>
+                        <td>
+                          <button
+                            onClick={() => deleteRelationship(r.id)}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                              width: 32, height: 32, minWidth: 0, borderRadius: 7, border: 'none',
+                              background: '#9b3030', color: '#fff', cursor: 'pointer', padding: 0,
+                            }}
+                          >
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )
+          })()}
         </>
       )}
 
@@ -597,8 +686,8 @@ export default function ProfilePage() {
               marginBottom: 14,
               padding: '10px 12px',
               borderRadius: 6,
-              background: '#eef2ff',
-              color: '#4338ca',
+              background: '#f0e8d8',
+              color: '#7c5c3b',
               fontSize: 13,
             }}>
               Книга формируется в фоне. Статус обновляется автоматически.

@@ -51,8 +51,8 @@ function SidebarField({ label, value }) {
   return (
     <div>
       <div style={{
-        color: '#6b7280',
-        fontSize: 11,
+        color: '#7a6e62',
+        fontSize: 12,
         fontWeight: 600,
         letterSpacing: '0.04em',
         marginBottom: 3,
@@ -60,7 +60,7 @@ function SidebarField({ label, value }) {
       }}>
         {label}
       </div>
-      <div style={{ color: '#111827', fontSize: 13, lineHeight: 1.45 }}>
+      <div style={{ color: '#1a1208', fontSize: 14, lineHeight: 1.45 }}>
         {value || 'Не указано'}
       </div>
     </div>
@@ -74,37 +74,67 @@ function PersonSidebar({ summary, person, loading, error, onClose, onOpen }) {
     <aside style={{
       width: 'clamp(280px, 25vw, 360px)',
       flexShrink: 0,
-      background: '#fff',
-      borderRight: '1px solid #e5e7eb',
+      background: '#f5f0e1',
+      borderRight: '1px solid #c8bfb0',
       display: 'flex',
       flexDirection: 'column',
       minHeight: 0,
-      overflowY: 'auto',
+      overflow: 'hidden',
     }}>
+      {/* Photo block — shown only when photo exists */}
+      {displayedPerson.photo_url && (
+        <div style={{ position: 'relative', flexShrink: 0, padding: '14px 14px 0' }}>
+          <div style={{
+            width: '100%',
+            paddingTop: '100%',
+            borderRadius: 16,
+            backgroundImage: `url(${displayedPerson.photo_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }} />
+          <button
+            type="button"
+            onClick={onClose}
+            title="Закрыть"
+            style={{
+              position: 'absolute', top: 22, right: 22,
+              width: 28, height: 28, minWidth: 0, padding: 0, borderRadius: '50%',
+              background: 'rgba(0,0,0,0.45)', color: '#fff',
+              border: 'none',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer',
+            }}
+          >
+            <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <line x1="1" y1="1" x2="9" y2="9"/><line x1="9" y1="1" x2="1" y2="9"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Name block */}
       <div style={{
-        padding: '16px 18px',
-        borderBottom: '1px solid #e5e7eb',
+        padding: '14px 18px 12px',
+        borderBottom: '1px solid #c8bfb0',
         display: 'flex',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 12,
+        gap: 8,
       }}>
         <div>
-          <div style={{ color: '#6b7280', fontSize: 12, marginBottom: 4 }}>Персона</div>
-          <div style={{ color: '#111827', fontSize: 17, fontWeight: 700, lineHeight: 1.3 }}>
+          <div style={{ color: '#1a1208', fontSize: 17, fontWeight: 700, lineHeight: 1.3 }}>
             {formatPersonName(displayedPerson)}
           </div>
         </div>
-        <button
-          type="button"
-          className="outline sm"
-          aria-label="Закрыть информацию о персоне"
-          title="Закрыть"
-          onClick={onClose}
-          style={{ minWidth: 32, padding: '4px 8px' }}
-        >
-          ×
-        </button>
+        {!displayedPerson.photo_url && (
+          <button
+            type="button"
+            className="outline sm"
+            onClick={onClose}
+            title="Закрыть"
+            style={{ minWidth: 32, padding: '4px 8px', flexShrink: 0 }}
+          >×</button>
+        )}
       </div>
 
       <div style={{
@@ -113,6 +143,8 @@ function PersonSidebar({ summary, person, loading, error, onClose, onOpen }) {
         flexDirection: 'column',
         gap: 18,
         flex: 1,
+        overflowY: 'auto',
+        minHeight: 0,
       }}>
         {loading ? (
           <div style={{ color: '#6b7280', fontSize: 13 }}>Загрузка информации...</div>
@@ -134,8 +166,8 @@ function PersonSidebar({ summary, person, loading, error, onClose, onOpen }) {
             {person.notes && (
               <div>
                 <div style={{
-                  color: '#6b7280',
-                  fontSize: 11,
+                  color: '#7a6e62',
+                  fontSize: 12,
                   fontWeight: 600,
                   letterSpacing: '0.04em',
                   marginBottom: 5,
@@ -144,8 +176,8 @@ function PersonSidebar({ summary, person, loading, error, onClose, onOpen }) {
                   Примечания
                 </div>
                 <div style={{
-                  color: '#374151',
-                  fontSize: 13,
+                  color: '#3a2e26',
+                  fontSize: 14,
                   lineHeight: 1.5,
                   whiteSpace: 'pre-wrap',
                   overflowWrap: 'anywhere',
@@ -158,7 +190,7 @@ function PersonSidebar({ summary, person, loading, error, onClose, onOpen }) {
         ) : null}
       </div>
 
-      <div style={{ padding: 18, borderTop: '1px solid #e5e7eb' }}>
+      <div style={{ padding: 18, borderTop: '1px solid #c8bfb0' }}>
         <button type="button" onClick={onOpen} style={{ width: '100%' }}>
           Открыть полную карточку
         </button>
@@ -167,29 +199,31 @@ function PersonSidebar({ summary, person, loading, error, onClose, onOpen }) {
   )
 }
 
+const PHOTO_SIZE = 44
+
 function PersonNode({ data }) {
   const bg = data.sex === 'MALE'
-    ? '#dbeafe'
+    ? '#c8dce8'
     : data.sex === 'FEMALE'
-      ? '#fce7f3'
-      : '#f3f4f6'
+      ? '#ecddd6'
+      : '#e0d8cc'
   const selected = Boolean(data.isSelected)
+  const hasPhoto = Boolean(data.photo_url)
   return (
     <div style={{
       width: W,
       minHeight: H,
       background: bg,
-      border: selected ? '2px solid #4f46e5' : '1px solid #d1d5db',
+      border: selected ? '2px solid #7c5c3b' : '1px solid #d0c4b0',
       borderRadius: 8,
       display: 'flex',
-      flexDirection: 'column',
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      padding: '8px 10px',
-      textAlign: 'center',
+      padding: hasPhoto ? '6px 8px 6px 6px' : '8px 10px',
       boxSizing: 'border-box',
-      boxShadow: selected ? '0 0 0 3px rgba(79, 70, 229, 0.15)' : 'none',
+      boxShadow: selected ? '0 0 0 3px rgba(124, 92, 59, 0.25)' : 'none',
       cursor: 'pointer',
+      gap: hasPhoto ? 8 : 0,
     }}>
       <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Left} id="source-left" style={{ opacity: 0 }} />
@@ -198,8 +232,30 @@ function PersonNode({ data }) {
       <Handle type="source" position={Position.Top} id="top" style={{ opacity: 0 }} />
       <Handle type="target" position={Position.Top} id="target-top" style={{ opacity: 0 }} />
       <Handle type="target" position={Position.Bottom} id="bottom" style={{ opacity: 0 }} />
-      <div style={{ fontWeight: 600, fontSize: 13, lineHeight: 1.3 }}>{data.name}</div>
-      <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{data.years || '-'}</div>
+
+      {hasPhoto && (
+        <div style={{
+          width: PHOTO_SIZE,
+          height: PHOTO_SIZE,
+          borderRadius: '50%',
+          flexShrink: 0,
+          backgroundImage: `url(${data.photo_url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          border: '1.5px solid rgba(0,0,0,0.08)',
+        }} />
+      )}
+
+      <div style={{
+        flex: 1,
+        minWidth: 0,
+        textAlign: hasPhoto ? 'left' : 'center',
+      }}>
+        <div style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {data.name}
+        </div>
+        <div style={{ fontSize: 10, color: '#6b7280', marginTop: 2 }}>{data.years || '-'}</div>
+      </div>
     </div>
   )
 }
@@ -211,8 +267,8 @@ function FamilyNode({ data }) {
       width: FAM,
       height: FAM,
       borderRadius: '50%',
-      background: former ? '#fff' : '#f43f5e',
-      border: former ? '2px solid #9ca3af' : 'none',
+      background: former ? '#ede5d8' : '#b85450',
+      border: former ? '2px solid #c0b8aa' : 'none',
       boxSizing: 'border-box',
     }}>
       <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
@@ -283,9 +339,9 @@ function DiagnosticsBanner({ diagnostics }) {
   return (
     <div style={{
       padding: '8px 16px',
-      background: '#fff7ed',
-      borderBottom: '1px solid #fed7aa',
-      color: '#9a3412',
+      background: '#f5ebe0',
+      borderBottom: '1px solid #e8cfa0',
+      color: '#7c3a1e',
       fontSize: 12,
     }}>
       <strong>Проблемы в связях: {diagnostics.length}.</strong>
@@ -378,16 +434,16 @@ export default function TreePage() {
     <div style={{ height: 'calc(100vh - 48px)', display: 'flex', flexDirection: 'column' }}>
       <div style={{
         padding: '8px 16px',
-        borderBottom: '1px solid #e5e7eb',
-        background: '#fff',
+        borderBottom: '1px solid #c8bfb0',
+        background: '#f5f0e1',
         display: 'flex',
         gap: 12,
-        alignItems: 'center',
+        alignItems: 'baseline',
       }}>
         <button className="outline sm" onClick={() => nav(`/profiles/${id}`)}>← Назад</button>
         <strong>Генеалогическое дерево</strong>
-        <span style={{ fontSize: 12, color: '#6b7280' }}>
-          Новейшие сверху · Синий — мужчины · Розовый — женщины · Красная — супруги · Пунктир — иные связи
+        <span style={{ fontSize: 12, color: '#7a6e62' }}>
+          Новейшие сверху · Голубой — мужчины · Розовый — женщины · Супруги — красная точка · Пунктир — иные связи
         </span>
       </div>
       <DiagnosticsBanner diagnostics={diagnostics} />
@@ -427,13 +483,13 @@ export default function TreePage() {
               minZoom={0.1}
             >
               <PersonFocusController personId={selectedPersonId} />
-              <Background gap={24} color="#e5e7eb" />
+              <Background gap={24} color="#ddd4c0" />
               <Controls />
               <MiniMap nodeColor={node =>
-                node.type === 'family' && node.data?.kind === 'former' ? '#9ca3af' :
-                  node.type === 'family' ? '#f43f5e' :
-                    node.data?.sex === 'MALE' ? '#dbeafe' :
-                      node.data?.sex === 'FEMALE' ? '#fce7f3' : '#f3f4f6'
+                node.type === 'family' && node.data?.kind === 'former' ? '#c0b8aa' :
+                  node.type === 'family' ? '#b85450' :
+                    node.data?.sex === 'MALE' ? '#c8dce8' :
+                      node.data?.sex === 'FEMALE' ? '#ecddd6' : '#e0d8cc'
               } />
             </ReactFlow>
           )}
